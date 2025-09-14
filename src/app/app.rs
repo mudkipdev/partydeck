@@ -51,6 +51,7 @@ pub struct PartyApp {
     pub loading_since: Option<std::time::Instant>,
     #[allow(dead_code)]
     pub task: Option<std::thread::JoinHandle<()>>,
+    pub auto_launch_pending: bool,
 }
 
 macro_rules! cur_handler {
@@ -90,6 +91,41 @@ impl PartyApp {
             loading_msg: None,
             loading_since: None,
             task: None,
+            auto_launch_pending: false,
+        }
+    }
+
+    pub fn new_with_cli(monitors: Vec<Monitor>, handler_lite: Option<Handler>, instances: Vec<Instance>, auto_launch: bool) -> Self {
+        let options = load_cfg();
+        let input_devices = scan_input_devices(&options.pad_filter_type);
+        let handlers = match handler_lite {
+            Some(_) => Vec::new(),
+            None => scan_handlers(),
+        };
+        let cur_page = match handler_lite {
+            Some(_) => MenuPage::Instances,
+            None => MenuPage::Home,
+        };
+
+        Self {
+            needs_update: check_for_partydeck_update(),
+            options,
+            cur_page,
+            settings_page: SettingsPage::General,
+            infotext: String::new(),
+            monitors,
+            input_devices,
+            instances,
+            instance_add_dev: None,
+            handlers,
+            selected_handler: 0,
+            handler_edit: None,
+            handler_lite,
+            profiles: scan_profiles(false),
+            loading_msg: None,
+            loading_since: None,
+            task: None,
+            auto_launch_pending: auto_launch,
         }
     }
 }
@@ -106,6 +142,11 @@ impl eframe::App for PartyApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if self.auto_launch_pending && self.task.is_none() {
+            self.auto_launch_pending = false;
+            self.prepare_game_launch();
+        }
+
         egui::TopBottomPanel::top("menu_nav_panel").show(ctx, |ui| {
             if self.task.is_some() {
                 ui.disable();

@@ -1,4 +1,5 @@
 mod app;
+mod cli;
 mod handler;
 mod input;
 mod instance;
@@ -8,7 +9,10 @@ mod paths;
 mod util;
 
 use crate::app::*;
+use crate::cli::{parse_args, build_instances_from_cli, resolve_handler_from_cli, LaunchMode};
 use crate::handler::Handler;
+use crate::input::scan_input_devices;
+use crate::instance::Instance;
 use crate::monitor::*;
 use crate::paths::PATH_PARTY;
 use crate::util::*;
@@ -31,14 +35,9 @@ fn main() -> eframe::Result {
         );
     }
 
-    let args: Vec<String> = std::env::args().collect();
+    let cli_args = parse_args();
 
-    if std::env::args().any(|arg| arg == "--help") {
-        println!("{}", USAGE_TEXT);
-        std::process::exit(0);
-    }
-
-    if std::env::args().any(|arg| arg == "--kwin") {
+    if cli_args.kwin {
         let args: Vec<String> = std::env::args().filter(|arg| arg != "--kwin").collect();
 
         let (w, h) = (monitors[0].width(), monitors[0].height());
@@ -68,32 +67,56 @@ fn main() -> eframe::Result {
         }
     }
 
-    let mut exec = String::new();
-    let mut execargs = String::new();
-    if let Some(exec_index) = args.iter().position(|arg| arg == "--exec") {
-        if let Some(next_arg) = args.get(exec_index + 1) {
-            exec = next_arg.clone();
-        } else {
-            eprintln!("{}", USAGE_TEXT);
-            std::process::exit(1);
-        }
-    }
-    if let Some(execargs_index) = args.iter().position(|arg| arg == "--args") {
-        if let Some(next_arg) = args.get(execargs_index + 1) {
-            execargs = next_arg.clone();
-        } else {
-            eprintln!("{}", USAGE_TEXT);
-            std::process::exit(1);
+    let mut handler_lite: Option<Handler> = None;
+    let mut instances: Vec<Instance> = Vec::new();
+    let auto_launch = cli_args.auto_launch;
+
+    // Process CLI mode (handler or executable)
+    if !matches!(cli_args.mode, LaunchMode::Gui) {
+        handler_lite = match resolve_handler_from_cli(&cli_args.mode) {
+            Ok(h) => Some(h),
+            Err(e) => {
+                eprintln!("[partydeck] Error: {}", e);
+                if matches!(cli_args.mode, LaunchMode::Handler(_)) {
+                    cli::list_all_handlers();
+                }
+                std::process::exit(1);
+            }
+        };
+
+        // Build instances if players were specified
+        if !cli_args.players.is_empty() {
+            let cfg = load_cfg();
+            let input_devices = scan_input_devices(&cfg.pad_filter_type);
+            let profiles = scan_profiles(true);
+            
+            match build_instances_from_cli(&cli_args.players, &input_devices, &profiles) {
+                Ok(built_instances) => {
+                    println!("[partydeck] Created {} instances from CLI", built_instances.len());
+                    for (i, instance) in built_instances.iter().enumerate() {
+                        println!("  Instance {}: {} devices, monitor {}", 
+                            i + 1, 
+                            instance.devices.len(),
+                            instance.monitor
+                        );
+                    }
+                    instances = built_instances;
+                }
+                Err(e) => {
+                    eprintln!("[partydeck] Error building instances: {}", e);
+                    cli::list_all_devices(&input_devices);
+                    std::process::exit(1);
+                }
+            }
+        } else if !auto_launch {
+            // List devices if no players specified and not auto launching
+            let cfg = load_cfg();
+            let input_devices = scan_input_devices(&cfg.pad_filter_type);
+            cli::list_all_devices(&input_devices);
         }
     }
 
-    let handler_lite = if !exec.is_empty() {
-        Some(Handler::new_from_cli(&exec, &execargs))
-    } else {
-        None
-    };
-
-    let fullscreen = std::env::args().any(|arg| arg == "--fullscreen");
+    let fullscreen = cli_args.fullscreen;
 
     std::fs::create_dir_all(PATH_PARTY.join("gamesyms"))
         .expect("Failed to create gamesyms directory");
@@ -136,21 +159,13 @@ fn main() -> eframe::Result {
             // This gives us image support:
             egui_extras::install_image_loaders(&cc.egui_ctx);
             cc.egui_ctx.set_zoom_factor(scale);
-            Ok(Box::<PartyApp>::new(PartyApp::new(
+            Ok(Box::<PartyApp>::new(PartyApp::new_with_cli(
                 monitors.clone(),
                 handler_lite,
+                instances,
+                auto_launch,
             )))
         }),
     )
 }
 
-static USAGE_TEXT: &str = r#"
-{}
-Usage: partydeck [OPTIONS]
-
-Options:
-    --exec <executable>   Execute the specified executable in splitscreen. If this isn't specified, PartyDeck will launch in the regular GUI mode.
-    --args [args]         Specify arguments for the executable to be launched with. Must be quoted if containing spaces.
-    --fullscreen          Start the GUI in fullscreen mode
-    --kwin                Launch PartyDeck inside of a KWin session
-"#;

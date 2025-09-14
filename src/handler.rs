@@ -282,6 +282,13 @@ pub fn scan_handlers() -> Vec<Handler> {
     out
 }
 
+pub fn find_handler_by_uid(uid: &str) -> Option<Handler> {
+    let handlers = scan_handlers();
+    handlers
+        .into_iter()
+        .find(|h| h.uid.eq_ignore_ascii_case(uid))
+}
+
 pub fn install_handler_from_file(file: &PathBuf) -> Result<(), Box<dyn Error>> {
     if !file.exists() || !file.is_file() || file.extension().unwrap_or_default() != "pdh" {
         return Err("Handler not valid!".into());

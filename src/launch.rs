@@ -141,7 +141,9 @@ pub fn launch_cmds(
 
         cmd.current_dir(cwd);
 
-        cmd.env("SDL_JOYSTICK_HIDAPI", "0");
+        if !h.enable_hidraw_ps {
+            cmd.env("SDL_JOYSTICK_HIDAPI", "0");
+        }
         cmd.env("ENABLE_GAMESCOPE_WSI", "0");
         if h.sdl2_override != SDL2Override::No {
             let path_sdl = match h.sdl2_override {
@@ -162,7 +164,9 @@ pub fn launch_cmds(
             cmd.env("WINEPREFIX", &path_pfx);
             cmd.env("PROTON_VERB", "run");
             cmd.env("PROTONPATH", protonpath);
-            cmd.env("PROTON_DISABLE_HIDRAW", "1");
+            if !h.enable_hidraw_ps {
+                cmd.env("PROTON_DISABLE_HIDRAW", "1");
+            }
             if cfg.proton_wow64 {
                 cmd.env("PROTON_USE_WOW64", "1");
             }

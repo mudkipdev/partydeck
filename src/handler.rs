@@ -48,7 +48,7 @@ pub struct Handler {
     pub use_mangohud: bool,
     pub use_goldberg: bool,
     #[serde(default)]
-    pub enable_hidraw_ps: bool,
+    pub enable_hidraw: bool,
     pub steam_appid: Option<u32>,
 
     pub game_null_paths: Vec<String>,
@@ -77,7 +77,7 @@ impl Default for Handler {
 
             use_mangohud: false,
             use_goldberg: false,
-            enable_hidraw_ps: false,
+            enable_hidraw: false,
             steam_appid: None,
 
             game_null_paths: Vec::new(),

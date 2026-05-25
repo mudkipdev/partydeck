@@ -258,7 +258,7 @@ impl PartyApp {
         }
 
         if h.win() {
-            ui.checkbox(&mut h.enable_hidraw_ps, "Enable hidraw for PS controllers (needed for Unity new Input System games; may cause double input in some games)");
+            ui.checkbox(&mut h.enable_hidraw, "Enable HIDraw for non-Xbox controllers (fixes Unity Input System games; may cause double input in non-Unity games!)");
         }
 
         if !h.win() {

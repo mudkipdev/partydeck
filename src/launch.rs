@@ -141,7 +141,7 @@ pub fn launch_cmds(
 
         cmd.current_dir(cwd);
 
-        if !h.enable_hidraw_ps {
+        if !h.enable_hidraw {
             cmd.env("SDL_JOYSTICK_HIDAPI", "0");
         }
         cmd.env("ENABLE_GAMESCOPE_WSI", "0");
@@ -164,7 +164,9 @@ pub fn launch_cmds(
             cmd.env("WINEPREFIX", &path_pfx);
             cmd.env("PROTON_VERB", "run");
             cmd.env("PROTONPATH", protonpath);
-            if !h.enable_hidraw_ps {
+            if h.enable_hidraw {
+                cmd.env("PROTON_ENABLE_HIDRAW", "1");
+            } else {
                 cmd.env("PROTON_DISABLE_HIDRAW", "1");
             }
             if cfg.proton_wow64 {
@@ -246,7 +248,7 @@ pub fn launch_cmds(
                 // Wine's winebus reads controllers via /dev/hidraw* when
                 // hidraw is exposed, so masking only the evdev node leaks
                 // input to every instance.
-                if h.enable_hidraw_ps {
+                if h.enable_hidraw {
                     for hp in &dev.hidraw_paths {
                         cmd.args(["--bind", "/dev/null", hp]);
                     }

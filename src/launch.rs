@@ -141,7 +141,7 @@ pub fn launch_cmds(
 
         cmd.current_dir(cwd);
 
-        if !h.enable_hidraw {
+        if !win || !h.enable_hidraw {
             cmd.env("SDL_JOYSTICK_HIDAPI", "0");
         }
         cmd.env("ENABLE_GAMESCOPE_WSI", "0");

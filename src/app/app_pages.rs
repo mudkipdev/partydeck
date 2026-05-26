@@ -257,6 +257,10 @@ impl PartyApp {
             });
         }
 
+        if h.win() {
+            ui.checkbox(&mut h.enable_hidraw, "Enable HIDraw for non-Xbox controllers (fixes Unity Input System games; may cause double input in non-Unity games!)");
+        }
+
         if !h.win() {
             ui.horizontal(|ui| {
                 ui.label("Linux Runtime:");

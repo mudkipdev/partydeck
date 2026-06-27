@@ -2,7 +2,7 @@
 
 # You might need to restart your pc if sharun doesn't create `AppDir` in this directory (It should create dirs on its own)
 
-# Grab release from https://github.com/wunnr/partydeck/releases and extract it to the same dir as this .sh file
+# Grab release from https://github.com/partydeck/partydeck/releases and extract it to the same dir as this .sh file
 set -eu
 
 cd dist;
